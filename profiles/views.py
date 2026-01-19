@@ -1,100 +1,51 @@
-from rest_framework.views import APIView
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-
 from .models import Profile, Project
 from .serializers import ProfileSerializer, ProjectSerializer
 
+# ---------------- PROFILE ----------------
+@api_view(['GET', 'POST'])
+def profile_view(request):
+    profile, _ = Profile.objects.get_or_create(id=1)
 
-# -------------------------
-# Health Check
-# -------------------------
-class HealthView(APIView):
-    def get(self, request):
-        return Response({"status": "ok"}, status=status.HTTP_200_OK)
-
-
-# -------------------------
-# Profile (SINGLE PROFILE)
-# -------------------------
-class ProfileView(APIView):
-    """
-    POST -> Create or update the single profile
-    GET  -> Fetch the profile with its projects
-    """
-
-    def get(self, request):
-        profile = Profile.objects.first()
-
-        if not profile:
-            return Response({}, status=status.HTTP_200_OK)
-
+    if request.method == 'GET':
         serializer = ProfileSerializer(profile)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data)
 
-    def post(self, request):
-        profile = Profile.objects.first()
-
-        # Update if profile exists, else create
-        if profile:
-            serializer = ProfileSerializer(profile, data=request.data)
-        else:
-            serializer = ProfileSerializer(data=request.data)
-
-        if serializer.is_valid():
-            serializer.save()  # 🔴 THIS SAVES TO DB
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-# -------------------------
-# Add Project (linked to profile)
-# -------------------------
-class ProjectCreateView(APIView):
-    """
-    POST /api/projects/
-    Adds a project to the single profile
-    """
-
-    def post(self, request):
-        profile = Profile.objects.first()
-
-        if not profile:
-            return Response(
-                {"error": "Create profile first"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        data = request.data.copy()
-        data["profile"] = profile.id  # link project to profile
-
-        serializer = ProjectSerializer(data=data)
-
+    if request.method == 'POST':
+        serializer = ProfileSerializer(profile, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# ---------------- PROJECTS ----------------
+@api_view(['GET', 'POST'])
+def projects_view(request):
+    profile = Profile.objects.first()
 
-# -------------------------
-# Search Projects by Skill
-# -------------------------
-class ProjectSearchView(APIView):
-    """
-    GET /api/projects/search/?skill=python
-    """
-
-    def get(self, request):
-        skill = request.query_params.get("skill")
-
-        if not skill:
-            return Response([], status=status.HTTP_200_OK)
-
-        projects = Project.objects.filter(
-            skills__icontains=skill
-        )
-
+    if request.method == 'GET':
+        projects = Project.objects.filter(profile=profile)
         serializer = ProjectSerializer(projects, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data)
+
+    if request.method == 'POST':
+        data = request.data.copy()
+        data['profile'] = profile.id
+
+        serializer = ProjectSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+# ---------------- SEARCH ----------------
+@api_view(['GET'])
+def project_search(request):
+    skill = request.GET.get('skill')
+    projects = Project.objects.filter(skills__icontains=skill)
+    serializer = ProjectSerializer(projects, many=True)
+    return Response(serializer.data)
