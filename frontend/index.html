@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Profile & Projects Test</title>
+</head>
+<body>
+
+<h1>Single Profile + Projects Test</h1>
+
+<!-- ================= PROFILE ================= -->
+<h2>Profile (Create / Update)</h2>
+
+<form id="profileForm">
+    <input id="name" placeholder="Name" /><br><br>
+    <input id="email" placeholder="Email" /><br><br>
+    <input id="education" placeholder="Education" /><br><br>
+    <input id="work" placeholder="Work Experience" /><br><br>
+    <input id="skills" placeholder="Profile Skills (comma separated)" /><br><br>
+    <textarea id="links" placeholder='Links JSON'></textarea><br><br>
+
+    <button type="submit">Save / Update Profile</button>
+</form>
+
+<pre id="profileResult"></pre>
+
+<hr>
+
+<!-- ================= PROJECT ================= -->
+<h2>Add Project (linked to profile)</h2>
+
+<form id="projectForm">
+    <input id="ptitle" placeholder="Project Title" /><br><br>
+    <input id="pdesc" placeholder="Description" /><br><br>
+    <input id="pskills" placeholder="Project Skills (comma separated)" /><br><br>
+    <input id="plink" placeholder="Project Link" /><br><br>
+
+    <button type="submit">Add Project</button>
+</form>
+
+<pre id="projectResult"></pre>
+
+<hr>
+
+<!-- ================= SEARCH ================= -->
+<h2>Search Projects by Skill</h2>
+
+<input id="searchSkill" placeholder="Skill (e.g. python)" />
+<button onclick="searchProjects()">Search</button>
+
+<pre id="searchResult"></pre>
+
+<script>
+const API = "http://127.0.0.1:8000/api";
+
+/* ================= PROFILE ================= */
+document.getElementById("profileForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const data = {
+        name: document.getElementById("name").value,
+        email: document.getElementById("email").value,
+        education: document.getElementById("education").value,
+        work_experience: document.getElementById("work").value,
+        skills: document.getElementById("skills").value
+            .split(",")
+            .map(s => s.trim())
+            .filter(Boolean),
+        links: JSON.parse(document.getElementById("links").value || "{}")
+    };
+
+    const res = await fetch(`${API}/profile/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    });
+
+    const json = await res.json();
+    document.getElementById("profileResult").textContent =
+        JSON.stringify(json, null, 2);
+});
+
+
+/* ================= PROJECT ================= */
+document.getElementById("projectForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const data = {
+        title: document.getElementById("ptitle").value,
+        description: document.getElementById("pdesc").value,
+        skills: document.getElementById("pskills").value
+            .split(",")
+            .map(s => s.trim())
+            .filter(Boolean),
+        project_link: document.getElementById("plink").value
+    };
+
+    const res = await fetch(`${API}/projects/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    });
+
+    const json = await res.json();
+    document.getElementById("projectResult").textContent =
+        JSON.stringify(json, null, 2);
+});
+
+
+/* ================= SEARCH ================= */
+async function searchProjects() {
+    const skill = document.getElementById("searchSkill").value;
+
+    const res = await fetch(
+        `${API}/projects/search/?skill=${encodeURIComponent(skill)}`
+    );
+
+    const json = await res.json();
+    document.getElementById("searchResult").textContent =
+        JSON.stringify(json, null, 2);
+}
+</script>
+
+</body>
+</html>
